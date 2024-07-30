@@ -1,0 +1,4 @@
+node_modules
+Data/critic_reviews.csv
+Data/movies.csv
+Data/user_reviews.csv
