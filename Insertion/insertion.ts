@@ -1,80 +1,89 @@
-import csvParser  from 'csv-parser';
+import csv  from 'csv-parser';
 import fs from 'fs';
 import { MovieModel } from '../Collections/movie';
 import { UserModel } from '../Collections/userReviews';
 import { CriticModel } from '../Collections/critcReviews';
-// import { objId } from '../Types/types';
 
+async function modify(data : any) {
+    data.movieRank = parseInt(data.movieRank);
+    data.movieYear = parseInt(data.movieYear);
+    return data;
+}
 
-export const readCSV = <T>(filePath: string): Promise<T[]> => {
+async function modifyCritic(data: any) {
+    console.log(data);
+    data.isFresh = data.isFresh.toLowerCase() === 'true' ? true : false;
+    data.isRotten = data.isRotten.toLowerCase() === 'true' ? true : false;
+    data.isRtUrl = data.isRtUrl.toLowerCase() === 'true' ? true : false;
+    data.isTopCritic = data.isTopCritic.toLowerCase() === 'true' ? true : false;
+    data.originalScore = getScore(data.originalScore);
+    const val = await getMovieId(data.movieId)
+    data.movieId = val[0]._id;
+    return data;
+}
+
+async function modifyUserReview(data : any ) {
+    const val = await getMovieId(data.movieId)
+    data.movieId = val[0]._id;
+    data.rating = parseFloat(data.rating);
+    data.isVerified = getBoolean(data.isVerified);
+    data.isSuperReviewer = getBoolean(data.isSuperReviewer);
+    data.hasProfanity = getBoolean(data.hasProfanity);
+    data.hasSpoilers = getBoolean(data.hasSpoilers);
+    data.score = parseFloat(data.score);
+
+    return data;
+}
+
+export const readCsvFile = async (filepath: string, model: string) => {
     return new Promise((resolve, reject) => {
-      const results: T[] = [];
-      fs.createReadStream(filePath)
-        .pipe(csvParser())
-        .on('data', (data) => results.push(data))
-        .on('end', () => resolve(results as T[]))
-        .on('error', (error: any) => reject(error));
-    });
-};
+        console.log(`Processing the file ${filepath}`)
+        const stream = fs.createReadStream(filepath)
+        const csvStream = csv();
+        let processing = false;
+        let recordCount = 0
+        const csvPipe = stream.pipe(csvStream)
+        csvPipe.on('data', async (data: any) => {
+            csvPipe.pause();
+            try {
+                processing = true;
+                if(model === 'movie') {
+                    const newMovie = await modify(data);
+                    await MovieModel.create(newMovie);
+                } else if (model === 'critic') {
+                    const newCritic = await modifyCritic(data);
+                    await CriticModel.create(newCritic);
+                } else if(model === 'user') {
+                    const newUserReview = await modifyUserReview(data);
+                    await UserModel.create(newUserReview);
+                }
+            }
+            catch (e) {
+                console.log("Error:", e);
+            }
+            finally {
+                csvPipe.resume();
+                processing = false;
+            }
+        })
+            .on('end', () => {
+                console.log(`EOF file reached for  Model`);
+            })
+            .on('error', (error: string) => reject(error))
+    })
+}
 
-export const insertMovieData = async(movieData: any[]) => {
-   // MovieModel;
-    await MovieModel.deleteMany();
-
-    for(let mov of movieData) {
-        // console.log(mov.critic_score);
-        const newMovie = await MovieModel.create({
-            movieId : mov.movieId,
-            movieTitle : mov.movieTitle,
-            movieYear : parseInt(mov.movieYear),
-            movieURL : mov.movieURL,
-            movieRank : parseInt(mov.movieRank),
-            critic_score : mov.critic_score,
-            audience_score : mov.audience_score
-        });
-        //await newMovie.save();
-    }
-    console.log("-__-_______-----_____ Successfully inserted!! ___ ------- __________");
-    // const allMovies = await MovieModel.find();
-    // console.log(allMovies);
-};
 
 
-function getBoolean(name : string) : Boolean {
+function getBoolean(name : String) : Boolean {
     if(name.toLowerCase() === 'true')
         return true;
     return false;
 }
 
  export async function getMovieId(id : string)  {
-    const mov : any=  await MovieModel.find({movieId : id});
-    console.log("Hello",mov);
-    if(mov) {
-        return mov[0]._id;
-    }     
-}
-
-export const insertUserReviewsData = async(userData: any[]) => {
-   // UserModel;
-    await UserModel.deleteMany();
-
-    for(let user of userData) {
-        const newUser = await UserModel.create({
-            movieId : getMovieId(user.movieId),
-            rating : parseFloat(user.rating),
-            reviewId : user.reviewId,
-            isVerified : getBoolean(user.isVerified),
-            isSuperReviewer : getBoolean(user.isSuperReviewer),
-            hasProfanity : getBoolean(user.hasProfanity),
-            hasSpoilers : getBoolean(user.hasSpoilers),
-            score : parseFloat(user.score),
-            creationDate : user.creationDate,
-            userDisplayName : user.userDisplayName,
-            userRealm : user.userRealm,
-            userId : user.userId,
-        }); 
-    }
-    console.log("SUCCESSFULLY INSERTED USERS!!!!!!!!");
+    const mov =  await MovieModel.find({movieId : id});
+    return mov;    
 }
 
 const grade :{ [key : string] : Number}= {
@@ -115,31 +124,3 @@ function getScore(data : string)  {
         }
     }
 }
-
-export const insertCriticReviewsData = async(criticData : any[]) => {
-    //CriticModel;
-
-    await CriticModel.deleteMany();
-
-    for(let critic of criticData) {
-        const newCritic = await CriticModel.create({
-            reviewId : critic.reviewId,
-            creationId : critic.creationId,
-            criticName : critic.criticName,
-            criticPageUrl : critic.criticPageUrl,
-            reviewState : critic.reviewState,
-            isFresh : getBoolean(critic.isFresh),
-            isRotten : getBoolean(critic.isFresh),
-            isRtUrl : getBoolean(critic.isRtUrl),
-            isTopCritic : getBoolean(critic.isTopCritic),
-            publicationUrl : critic.publicationUrl,
-            reviewUrl : critic.reviewUrl,
-            scoreSentiment : critic.scoreSentiment,
-            originalScore : getScore(critic.originalScore),
-            movieId : getMovieId(critic.movieId)
-        });
-    }
-    console.log("Succcessfully Inserted criticss");
-}
-
-
