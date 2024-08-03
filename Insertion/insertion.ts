@@ -73,8 +73,6 @@ export const readCsvFile = async (filepath: string, model: string) => {
     })
 }
 
-
-
 function getBoolean(name : String) : Boolean {
     if(name.toLowerCase() === 'true')
         return true;
@@ -103,24 +101,21 @@ const grade :{ [key : string] : Number}= {
 
 function getScore(data : string)  {
 
-    if(data===""){
+    if(data.includes('/')) {
+        const str : string[] = data.split('/');
+        const nume : number = parseFloat(str[0]);
+        const deno : number = parseFloat(str[1]);
+        return ((10/deno)*nume).toFixed(2);
     }
-    else{
-        if(data.includes('/')) {
-            const str : string[] = data.split('/');
-            const nume : number = parseFloat(str[0]);
-            const deno : number = parseFloat(str[1]);
-            return ((10/deno)*nume).toFixed(2);
-        }
-        else if(data ==='+3 out of -4..+4'){
-            return (10/parseFloat(data.slice(-2)))*parseFloat(data.slice(0,2));
-        }
-        else if(data.includes('+') || data.includes('-') || (data>='A' && data<='D')){
-            return grade[data];
-
-        }
-        else if(data==='FIVE STARS'){
-            return 10;
-        }
+    else if(data ==='+3 out of -4..+4'){
+        return (10/parseFloat( data.slice(-2) )) * parseFloat( data.slice(0,2) );
     }
+    else if(data.includes('+') || data.includes('-') || (data>='A' && data<='D')){
+        return grade[data];
+    }
+    else if(data==='FIVE STARS'){
+        return 10;
+    }
+    
 }
+

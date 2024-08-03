@@ -2,7 +2,7 @@ import { readFile } from "fs";
 import { currentInstance } from "./connection/connection";
 import { readCsvFile } from "./Insertion/insertion";
 
-import { getMovieId } from "./Insertion/insertion";
+import { yearWiseMoviesCount, movieCriticFrequencies, movieRatingFrequencies } from "./Insertion/queries";
 
 currentInstance;
 
@@ -17,4 +17,7 @@ const readCSVData = async() => {
     
 };
 
-readCSVData();
+//readCSVData();
+yearWiseMoviesCount();
+movieRatingFrequencies("Seven Samurai");
+movieCriticFrequencies("Seven Samurai");
